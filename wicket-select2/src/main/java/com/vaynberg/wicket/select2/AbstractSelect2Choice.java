@@ -201,7 +201,9 @@ abstract class AbstractSelect2Choice<T, M> extends Select2ChoiceBaseComponent<M>
                 groupedItems.get(key).add(item);
                 continue;
             }
-            groupedItems.put(key, new ArrayList<T>(){{ add(item); }});
+            groupedItems.put(key, new ArrayList<T>() {{
+                add(item);
+            }});
         }
         return groupedItems;
     }

@@ -23,5 +23,4 @@ public abstract class StringTextChoiceProvider extends TextChoiceProvider<String
     public Collection<String> toChoices(Collection<String> ids) {
         return ids;
     }
-
 }

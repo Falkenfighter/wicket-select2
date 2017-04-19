@@ -24,12 +24,11 @@ public class DragAndDropBehavior extends Behavior {
         }
 
         // Render script to enable sortable/drag-and-drop behavior
-        String script = "$('#%1$s').select2('container').find('ul.select2-choices').sortable({" +
+        final String script = "$('#%1$s').select2('container').find('ul.select2-choices').sortable({" +
                 "containment: 'parent'," +
                 "start: function() { $('#%1$s').select2('onSortStart'); }," +
                 "update: function() { $('#%1$s').select2('onSortEnd'); }" +
                 "});";
         response.render(OnDomReadyHeaderItem.forScript(JQuery.execute(script, component.getMarkupId())));
     }
-
 }
