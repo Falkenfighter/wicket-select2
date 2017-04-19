@@ -152,6 +152,8 @@ public class HomePage extends WebPage {
         put("CA", new TimeZone("California", "CA", "Pacific"));
         put("OR", new TimeZone("Oregon", "OR", "Pacific"));
         put("WA", new TimeZone("Washington", "WA", "Pacific"));
+        put("UN1", new TimeZone("Ungrouped 1", "UN1", null));
+        put("UN2", new TimeZone("Ungrouped 2", "UN2", null));
     }};
 
     private class TimeZoneProvider extends GroupedTextChoiceProvider<TimeZone> {

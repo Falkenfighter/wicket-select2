@@ -174,6 +174,10 @@ abstract class AbstractSelect2Choice<T, M> extends Select2ChoiceBaseComponent<M>
     protected void addGroupedValues(final JSONWriter json, final Response<T> response) throws JSONException {
         final Map<String, List<T>> groupedItems = groupItems(response);
         for (Map.Entry<String, List<T>> entry : groupedItems.entrySet()) {
+            if (UNGROUPED.equals(entry.getKey())) {
+                addValues(json, entry.getValue());
+                continue;
+            }
             json.object().key("text").value(entry.getKey()).key("children").array();
             addValues(json, entry.getValue());
             json.endArray().endObject();
