@@ -33,16 +33,12 @@ import java.util.List;
  */
 public class Select2MultiChoice<T> extends AbstractSelect2Choice<T, Collection<T>> {
 
+    public Select2MultiChoice(String id, ChoiceProvider<T> provider) {
+        super(id, provider);
+    }
+
     public Select2MultiChoice(String id, IModel<Collection<T>> model, ChoiceProvider<T> provider) {
         super(id, model, provider);
-    }
-
-    public Select2MultiChoice(String id, IModel<Collection<T>> model) {
-        super(id, model);
-    }
-
-    public Select2MultiChoice(String id) {
-        super(id);
     }
 
     @Override

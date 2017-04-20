@@ -9,18 +9,22 @@ import org.apache.wicket.model.IModel;
 import org.apache.wicket.request.http.WebRequest;
 import org.apache.wicket.util.string.Strings;
 
-public abstract class Select2ChoiceBaseComponent<M> extends HiddenField<M> {
+public abstract class Select2ChoiceBaseComponent<T, M> extends HiddenField<M> {
 
     private final Settings settings = new Settings();
 
-    public Select2ChoiceBaseComponent(String id) {
-        this(id, null);
+    /** The provider to populate the dropdown with. Private to gate access @see getProvider */
+    private final ChoiceProvider<T> provider;
+
+    protected Select2ChoiceBaseComponent(final String id, final ChoiceProvider<T> provider) {
+        this(id, null, provider);
     }
 
-    public Select2ChoiceBaseComponent(String id, IModel<M> model) {
+    protected Select2ChoiceBaseComponent(final String id, final IModel<M> model, final ChoiceProvider<T> provider) {
         super(id, model);
         add(new Select2ResourcesBehavior());
         setOutputMarkupId(true);
+        this.provider = provider;
     }
 
     /**
@@ -28,6 +32,14 @@ public abstract class Select2ChoiceBaseComponent<M> extends HiddenField<M> {
      */
     public final Settings getSettings() {
         return settings;
+    }
+
+    public final ChoiceProvider<T> getProvider() {
+        if (provider == null) {
+            throw new IllegalStateException("Select2 choice component: " + getId()
+                    + " does not have a ChoiceProvider set");
+        }
+        return provider;
     }
 
     /**

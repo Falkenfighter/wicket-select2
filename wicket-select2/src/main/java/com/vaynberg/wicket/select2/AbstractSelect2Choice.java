@@ -14,15 +14,10 @@ package com.vaynberg.wicket.select2;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import org.apache.wicket.IResourceListener;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.request.IRequestParameters;
-import org.apache.wicket.request.Request;
 import org.apache.wicket.request.http.WebResponse;
 import org.json.JSONException;
 import org.json.JSONWriter;
@@ -34,11 +29,7 @@ import org.json.JSONWriter;
  * @param <M> type of model object
  * @author igor
  */
-abstract class AbstractSelect2Choice<T, M> extends Select2ChoiceBaseComponent<M> implements IResourceListener {
-
-    private static final String UNGROUPED = "UNGROUPED";
-
-    private ChoiceProvider<T> provider;
+abstract class AbstractSelect2Choice<T, M> extends Select2ChoiceBaseComponent<T, M> implements IResourceListener {
 
     /**
      * Constructor
@@ -77,81 +68,24 @@ abstract class AbstractSelect2Choice<T, M> extends Select2ChoiceBaseComponent<M>
      * @param provider choice provider
      */
     public AbstractSelect2Choice(String id, IModel<M> model, ChoiceProvider<T> provider) {
-        super(id, model);
-        this.provider = provider;
-
-    }
-
-
-    /**
-     * Sets the choice provider
-     *
-     * @param provider
-     */
-    public final void setProvider(ChoiceProvider<T> provider) {
-        this.provider = provider;
-    }
-
-    /**
-     * @return choice provider
-     */
-    public final ChoiceProvider<T> getProvider() {
-        if (provider == null) {
-            throw new IllegalStateException("Select2 choice component: " + getId()
-                    + " does not have a ChoiceProvider set");
-        }
-        return provider;
+        super(id, model, provider);
     }
 
     @Override
     protected void onConfigure() {
         super.onConfigure();
-
         getSettings().getAjax().setUrl(urlFor(IResourceListener.INTERFACE, null));
     }
 
-
     @Override
     public void onResourceRequested() {
+        final Response<T> response = new Response<T>();
+        query(response);
 
-        // this is the callback that retrieves matching choices used to populate the dropdown
+        final OutputStreamWriter out = getOutputStreamWriter();
+        final JSONWriter json = new JSONWriter(out);
 
-        Request request = getRequestCycle().getRequest();
-        IRequestParameters params = request.getRequestParameters();
-
-        // retrieve choices matching the search term
-
-        String term = params.getParameterValue("term").toOptionalString();
-
-        int page = params.getParameterValue("page").toInt(1);
-        // select2 uses 1-based paging, but in wicket world we are used to
-        // 0-based
-        page -= 1;
-
-        Response<T> response = new Response<T>();
-        provider.query(term, page, response);
-
-        // jsonize and write out the choices to the response
-
-        WebResponse webResponse = (WebResponse) getRequestCycle().getResponse();
-        webResponse.setContentType("application/json");
-
-        OutputStreamWriter out = new OutputStreamWriter(webResponse.getOutputStream(), getRequest().getCharset());
-        JSONWriter json = new JSONWriter(out);
-
-        try {
-            json.object();
-            json.key("results").array();
-            if (provider instanceof GroupedTextChoiceProvider) {
-                addGroupedValues(json, response);
-            } else {
-                addValues(json, response);
-            }
-            json.endArray();
-            json.key("more").value(response.getHasMore()).endObject();
-        } catch (JSONException e) {
-            throw new RuntimeException("Could not write Json response", e);
-        }
+        writeResponse(json, response);
 
         try {
             out.flush();
@@ -162,7 +96,7 @@ abstract class AbstractSelect2Choice<T, M> extends Select2ChoiceBaseComponent<M>
 
     @Override
     protected void onDetach() {
-        provider.detach();
+        getProvider().detach();
         super.onDetach();
     }
 
@@ -171,40 +105,68 @@ abstract class AbstractSelect2Choice<T, M> extends Select2ChoiceBaseComponent<M>
         return false;
     }
 
-    protected void addGroupedValues(final JSONWriter json, final Response<T> response) throws JSONException {
-        final Map<String, List<T>> groupedItems = groupItems(response);
-        for (Map.Entry<String, List<T>> entry : groupedItems.entrySet()) {
-            if (UNGROUPED.equals(entry.getKey())) {
-                addValues(json, entry.getValue());
-                continue;
-            }
-            json.object().key("text").value(entry.getKey()).key("children").array();
-            addValues(json, entry.getValue());
-            json.endArray().endObject();
+    /**
+     * Handles building the JSON structure to provide to Select2.
+     *
+     * <pre>{@code
+     * {
+     *   "results": [
+     *     {
+     *       "id": 1,
+     *       "text": "Some Text
+     *     }
+     *   ],
+     *   "more": true
+     * }
+     * }</pre>
+     *
+     * @param json
+     * @param response
+     */
+    protected void writeResponse(final JSONWriter json, final Response<T> response) {
+        try {
+            json.object().key("results").array();
+            writeValues(json, response);
+            json.endArray().key("more").value(response.getHasMore()).endObject();
+        } catch (JSONException e) {
+            throw new RuntimeException("Could not write Json response", e);
         }
     }
 
-    protected void addValues(final JSONWriter json, final Iterable<T> response) throws JSONException {
+    /**
+     * Updates the response object with the values matching the query. Matching is done in the
+     * provided {@link ChoiceProvider#query(String, int, Response)} implementation
+     *
+     * @param response the response to update
+     */
+    protected void query(final Response<T> response) {
+        // this is the callback that retrieves matching choices used to populate the dropdown
+        final IRequestParameters params = getRequestCycle().getRequest().getRequestParameters();
+
+        // select2 uses 1-based paging, but in wicket world we are used to 0-based
+        final int page = params.getParameterValue("page").toInt(1) - 1;
+
+        // retrieve choices matching the search term
+        final String term = params.getParameterValue("term").toOptionalString();
+        getProvider().query(term, page, response);
+    }
+
+    /**
+     * Sets the response type to application/json before converting it into an {@link OutputStreamWriter}
+     *
+     * @return the response as a new {@link OutputStreamWriter}
+     */
+    protected OutputStreamWriter getOutputStreamWriter() {
+        final WebResponse webResponse = (WebResponse) getRequestCycle().getResponse();
+        webResponse.setContentType("application/json");
+        return new OutputStreamWriter(webResponse.getOutputStream(), getRequest().getCharset());
+    }
+
+    protected void writeValues(final JSONWriter json, final Iterable<T> response) throws JSONException {
         for (T item : response) {
             json.object();
-            provider.toJson(item, json);
+            getProvider().toJson(item, json);
             json.endObject();
         }
-    }
-
-    private Map<String, List<T>> groupItems(final Response<T> response) {
-        final Map<String, List<T>> groupedItems = new HashMap<String, List<T>>();
-        for (final T item : response) {
-            final String group = ((GroupedValue) item).getGroup();
-            final String key = (group == null || group.isEmpty()) ? UNGROUPED : group;
-            if (groupedItems.containsKey(key)) {
-                groupedItems.get(key).add(item);
-                continue;
-            }
-            groupedItems.put(key, new ArrayList<T>() {{
-                add(item);
-            }});
-        }
-        return groupedItems;
     }
 }

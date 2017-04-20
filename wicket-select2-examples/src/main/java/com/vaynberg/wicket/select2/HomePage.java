@@ -71,7 +71,7 @@ public class HomePage extends WebPage {
         Form<?> groupedMulti = new Form<Void>("groupedmulti");
         add(groupedMulti);
 
-        Select2MultiChoice<TimeZone> timeZones = new Select2MultiChoice<TimeZone>("timezones",
+        Select2MultiChoice<TimeZone> timeZones = new Select2GroupedMultiChoice<TimeZone>("timezones",
                 new PropertyModel<Collection<TimeZone>>(this, "timeZones"), new TimeZoneProvider());
         timeZones.add(new DragAndDropBehavior());
         groupedMulti.add(timeZones);
